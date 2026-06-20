@@ -97,6 +97,7 @@ async function run() {
       const data = req.body;
       const result = await ticketCollection.insertOne({
         ...data,
+        status: "pending",  
         userId: req.user.id,
         userName: req.user.name,
         userMail: req.user.email,
@@ -105,12 +106,37 @@ async function run() {
 
       res.json(result);
     })
-    // Vendor Ticket get 
-    app.get('/vendor/tickets', async(req, res) => {
+    // Admin Ticket get 
+    app.get('/admin/tickets', verifyToken, adminVerify , async(req, res) => {
       const result = await ticketCollection.find().toArray();
 
       res.json(result);
     })
+
+    // Admin Approve Ticket 
+    app.patch('/admin/tickets/approve/:id', verifyToken, adminVerify, async (req, res) => {
+      const { id } = req.params;
+
+      const result = await ticketCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "approved" } }
+      );
+
+      res.json(result);
+    });
+
+    // Admin Reject Ticket 
+    app.patch('/admin/tickets/reject/:id', verifyToken, adminVerify, async (req, res) => {
+      const { id } = req.params;
+
+      const result = await ticketCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "rejected" } }
+      );
+
+      res.json(result);
+    });
+
     // Vendor Ticket get by user id 
     app.get('/vendor/my/tickets',verifyToken, vendorVerify, async(req, res) => {
       const userId = req.user.id;
@@ -157,6 +183,12 @@ async function run() {
 
       res.json(result);
     })
+
+    // get public ticket 
+    app.get('/tickets', async (req, res) => {
+      const result = await ticketCollection.find({ status: "approved" }).toArray();
+      res.json(result);
+    });
 
 
     // Send a ping to confirm a successful connection
