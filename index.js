@@ -6,7 +6,7 @@ const cors = require("cors");
 const app = express()
 const port = process.env.PORT || 5000;
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { jwtVerify, createRemoteJWKSet } = require('jose-cjs');
 
 app.use(cors());
@@ -108,6 +108,52 @@ async function run() {
     // Vendor Ticket get 
     app.get('/vendor/tickets', async(req, res) => {
       const result = await ticketCollection.find().toArray();
+
+      res.json(result);
+    })
+    // Vendor Ticket get by user id 
+    app.get('/vendor/my/tickets',verifyToken, vendorVerify, async(req, res) => {
+      const userId = req.user.id;
+
+      const result = await ticketCollection.find({ userId }).toArray();
+
+      res.json(result);
+    })
+
+     // Patch ticket 
+    app.patch('/vendor/my/tickets/:id', verifyToken, vendorVerify,async(req, res) => {
+      const {id} = req.params;
+      const updateData = req.body;
+       // 1. get ticket 
+      const ticket = await ticketCollection.findOne({
+        _id: new ObjectId(id),
+        userId: req.user.id
+      });
+
+      //  2. rejected 
+      if (ticket?.status === "rejected") {
+        return res.status(403).json({
+          message: "Rejected ticket cannot be updated"
+        });
+      }
+
+      // console.log(updateData);
+      // 3.update 
+      const result = await ticketCollection.updateOne(
+        {
+          _id : new ObjectId(id),
+          userId: req.user.id 
+        },
+        {$set : updateData}
+      )
+
+      res.json(result)
+    })
+
+    // ticket delete 
+    app.delete('/vendor/my/tickets/:id', verifyToken, vendorVerify, async(req,res) =>{
+      const {id} = req.params;
+      const result = await ticketCollection.deleteOne({_id : new ObjectId(id)})
 
       res.json(result);
     })
