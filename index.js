@@ -92,8 +92,51 @@ async function run() {
     const userCollection = db.collection("user");
     const ticketCollection = db.collection("tickets");
     
+    // get users 
+    app.get('/users',async(req,res) => {
+      const cursor = userCollection.find();
+      const result = await cursor.toArray();
+
+      res.json(result)
+    })
+    // fraud user 
+    app.patch("/admin/users/fraud/:id", verifyToken, adminVerify, async (req, res) => {
+        const { id } = req.params;
+        const result = await userCollection.updateOne(
+          { _id: new ObjectId(id) },  
+          {
+            $set: {
+              isFraud: true
+            }
+          }
+        );
+
+        // Hide all vendor tickets
+        await ticketCollection.updateMany(
+          { userId: id },
+          {
+            $set: {
+              hidden: true
+            }
+          }
+        );
+
+        res.json(result);
+      }
+    );
+
     // Vendor Ticket add
     app.post('/vendor/tickets', verifyToken, vendorVerify, async(req,res) => {
+      const vendor = await userCollection.findOne({
+        id: req.user.id,
+      });
+
+      if (vendor?.isFraud) {
+        return res.status(403).json({
+          message: "Fraud vendors cannot add tickets",
+        });
+      }
+      
       const data = req.body;
       const result = await ticketCollection.insertOne({
         ...data,
