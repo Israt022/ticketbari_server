@@ -276,6 +276,17 @@ async function run() {
       const result = await ticketCollection.find({ status: "approved" }).toArray();
       res.json(result);
     });
+
+    // get pets data by ID
+    app.get('/tickets/:ticketId', verifyToken, async(req,res)=>{
+      // console.log(req.user);
+        const {ticketId} = req.params;
+        const query = {_id : new ObjectId(ticketId)}
+        const result = await ticketCollection.findOne(query);
+
+        res.json(result);
+    })
+
     // get advertise ticket 
     app.get('/advertise/tickets', async (req, res) => {
       const result = await ticketCollection.find({ status: "approved", isAdvertised: true }).toArray();
