@@ -48,6 +48,7 @@ const verifyToken = async(req,res,next) =>{
 
   try{
     const {payload} = await jwtVerify(token, JWKS);
+    // console.log(payload);
     req.user = payload;
     
     next();
@@ -59,7 +60,7 @@ const verifyToken = async(req,res,next) =>{
 const vendorVerify = async(req, res, next) => {
   const user = req.user;
   
-  if(user.role !== "vendor"){
+  if(user.userRole !== "vendor"){
     return res.status(403).json({message : "Forbidden"});
   }
 
@@ -68,7 +69,7 @@ const vendorVerify = async(req, res, next) => {
 // User verify
 const userVerify = async(req,res,next) => {
   const user = req.user;
-  if(user.role !== "user"){
+  if(user.userRole !== "user"){
     return res.status(403).send({message : "Forbidden access"})
   }
 
@@ -77,7 +78,7 @@ const userVerify = async(req,res,next) => {
 // Admin verify
 const adminVerify = async(req,res,next) => {
   const user = req.user;
-  if(user.role !== "admin"){
+  if(user.userRole !== "admin"){
     return res.status(403).send({message : "Forbidden access"})
   }
 
@@ -141,6 +142,7 @@ async function run() {
       const result = await ticketCollection.insertOne({
         ...data,
         status: "pending",  
+        isAdvertised: false, 
         userId: req.user.id,
         userName: req.user.name,
         userMail: req.user.email,
@@ -227,9 +229,56 @@ async function run() {
       res.json(result);
     })
 
+    // Admin advertise 
+    app.patch("/admin/tickets/advertise/:id",verifyToken, adminVerify, async(req, res) => {
+      const {id} = req.params;
+
+      const ticket = await ticketCollection.findOne({
+        _id : new ObjectId(id) 
+      });
+
+      if(!ticket){
+        return res.status(404).json({
+          message : 'Ticket not found',
+        });
+      }
+
+      // limit 
+      if (!ticket.isAdvertised) {
+
+        const count = await ticketCollection.countDocuments({
+          isAdvertised: true,
+        });
+
+        if (count >= 6) {
+          return res.status(400).json({
+            message: "Maximum 6 tickets can be advertised",
+          });
+        }
+      }
+
+      const result = await ticketCollection.updateOne(
+        {
+          _id : new ObjectId(id),
+        },
+        {
+          $set : {
+            isAdvertised: !ticket.isAdvertised,
+          }
+        }
+      );
+
+      res.json(result);
+    })
+
     // get public ticket 
     app.get('/tickets', async (req, res) => {
       const result = await ticketCollection.find({ status: "approved" }).toArray();
+      res.json(result);
+    });
+    // get advertise ticket 
+    app.get('/advertise/tickets', async (req, res) => {
+      const result = await ticketCollection.find({ status: "approved", isAdvertised: true }).toArray();
       res.json(result);
     });
 
