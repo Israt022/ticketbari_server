@@ -152,8 +152,8 @@ async function run() {
       res.json(result);
     })
     // Admin Ticket get 
-    app.get('/admin/tickets', verifyToken, adminVerify , async(req, res) => {
-      const result = await ticketCollection.find().toArray();
+    app.get('/admin/tickets', async(req, res) => {
+      const result = await ticketCollection.find({hidden: { $ne: true }}).toArray();
 
       res.json(result);
     })
@@ -280,7 +280,8 @@ async function run() {
     // get public ticket 
     app.get('/tickets', async (req, res) => {
       const query = {
-          status: "approved"
+          status: "approved",
+          hidden: { $ne: true }
       }
 
       // from location 
@@ -361,7 +362,7 @@ async function run() {
 
     // get advertise ticket 
     app.get('/advertise/tickets', async (req, res) => {
-      const result = await ticketCollection.find({ status: "approved", isAdvertised: true }).toArray();
+      const result = await ticketCollection.find({ status: "approved", isAdvertised: true, hidden: { $ne: true } }).toArray();
       res.json(result);
     });
 
