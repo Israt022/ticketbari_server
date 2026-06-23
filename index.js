@@ -92,6 +92,7 @@ async function run() {
     const db = client.db("ticket_bari");
     const userCollection = db.collection("user");
     const ticketCollection = db.collection("tickets");
+    const bookingCollection = db.collection("bookings");
     
     // get users 
     app.get('/users',async(req,res) => {
@@ -365,6 +366,62 @@ async function run() {
       const result = await ticketCollection.find({ status: "approved", isAdvertised: true, hidden: { $ne: true } }).toArray();
       res.json(result);
     });
+
+    // booking related api 
+    app.post("/bookings", verifyToken, async (req, res) => {
+      const data = req.body;
+
+      const ticket = await ticketCollection.findOne({
+        _id: new ObjectId(data.ticketId)
+      });
+
+      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+
+      if (ticket.ticketQuantity < data.quantity) {
+        return res.status(400).json({ message: "Not enough tickets" });
+      }
+
+      const booking = {
+        ...data,
+         ticketTitle: ticket.ticketTitle,
+        image: ticket.image,
+        fromLocation: ticket.fromLocation,
+        toLocation: ticket.toLocation,
+        departureDateTime: ticket.departureDateTime,
+
+        userId: req.user.id,
+        userName: req.user.name,
+        userEmail: req.user.email,
+
+        vendorId: ticket.userId,
+        vendorName: ticket.userName,
+        vendorEmail: ticket.userMail,
+
+        status: "pending",
+        createdAt: new Date()
+      };
+
+      const result = await bookingCollection.insertOne(booking);
+
+      res.json(result);
+    });
+
+    app.get("/vendor/bookings", verifyToken, vendorVerify, async (req, res) => {
+      const result = await bookingCollection
+        .find({ vendorId: req.user.id })
+        .toArray();
+
+      res.json(result);
+    });
+
+    app.get("/user/bookings", verifyToken, async (req, res) => {
+      const result = await bookingCollection
+        .find({ userId: req.user.id })
+        .toArray();
+
+      res.json(result);
+    });
+
 
 
     // Send a ping to confirm a successful connection
