@@ -383,7 +383,8 @@ async function run() {
 
       const booking = {
         ...data,
-         ticketTitle: ticket.ticketTitle,
+        ticketId: ticket._id.toString(),
+        ticketTitle: ticket.ticketTitle,
         image: ticket.image,
         fromLocation: ticket.fromLocation,
         toLocation: ticket.toLocation,
@@ -398,6 +399,11 @@ async function run() {
         vendorEmail: ticket.userMail,
 
         status: "pending",
+
+        paymentStatus: "unpaid",
+        transactionId: null,
+        paidAt: null,
+
         createdAt: new Date()
       };
 
@@ -442,6 +448,54 @@ async function run() {
         .toArray();
 
       res.json(result);
+    });
+
+    // payment 
+    app.patch("/bookings/payment-success/:id", verifyToken,async (req, res) => {
+      const { transactionId, ticketId, quantity } = req.body;
+      const bookingId = req.params.id;
+
+      const booking = await bookingCollection.findOne({
+        _id: new ObjectId(bookingId),
+      });
+
+      if (!booking) {
+        return res.status(404).send({
+          message: "Booking not found",
+        });
+      }
+
+      // already paid
+      if (booking.paymentStatus === "paid") {
+        return res.send({
+          message: "Already paid",
+        });
+      }
+
+      await bookingCollection.updateOne(
+        { _id: new ObjectId(bookingId) },
+        {
+          $set: {
+            status: "paid",
+            paymentStatus: "paid",
+            transactionId,
+            paidAt: new Date(),
+          },
+        }
+      );
+
+      await ticketCollection.updateOne(
+        { _id: new ObjectId(ticketId) },
+        {
+          $inc: {
+            ticketQuantity: -Number(quantity),
+          },
+        }
+      );
+
+      res.json({
+        success: true,
+      });
     });
 
 
