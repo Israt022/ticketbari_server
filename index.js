@@ -413,6 +413,28 @@ async function run() {
 
       res.json(result);
     });
+    // accept booking
+    app.patch("/vendor/bookings/accept/:id", verifyToken, vendorVerify, async (req, res) => {
+      const { id } = req.params;
+
+      const result = await bookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "accepted" } }
+      );
+
+      res.json(result);
+    });
+    // reject booking
+    app.patch("/vendor/bookings/reject/:id", verifyToken, vendorVerify, async (req, res) => {
+      const { id } = req.params;
+
+      const result = await bookingCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "rejected" } }
+      );
+
+      res.json(result);
+    });
 
     app.get("/user/bookings", verifyToken, async (req, res) => {
       const result = await bookingCollection
