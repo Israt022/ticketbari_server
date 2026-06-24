@@ -515,6 +515,7 @@ async function run() {
         });
       }
 
+      // update
       await bookingCollection.updateOne(
         { _id: new ObjectId(bookingId) },
         {
@@ -527,14 +528,48 @@ async function run() {
         }
       );
 
+      // get ticket
+      const ticket =
+        await ticketCollection.findOne({
+          _id: new ObjectId(ticketId),
+        });
+
+      if (!ticket) {
+        return res.status(404).send({
+          message: "Ticket not found",
+        });
+      }
+
+      const currentQuantity =
+        Number(ticket.ticketQuantity);
+
+      const bookedQuantity =
+        Number(quantity);
+
+      const updatedQuantity =
+        Math.max(
+          0,
+          currentQuantity -
+            bookedQuantity
+        );
+
+      // update ticket quantity
       await ticketCollection.updateOne(
-        { _id: new ObjectId(ticketId) },
         {
-          $inc: {
-            ticketQuantity: -Number(quantity),
+          _id: new ObjectId(ticketId),
+        },
+        {
+          $set: {
+            ticketQuantity:
+              String(updatedQuantity),
           },
         }
       );
+
+      const updatedTicket =
+        await ticketCollection.findOne({
+          _id: new ObjectId(ticketId),
+        });
 
       res.json({
         success: true,
