@@ -152,6 +152,49 @@ async function run() {
 
       res.json(result);
     })
+
+    // vendor revenue view
+    app.get("/vendor/revenue-overview", verifyToken, vendorVerify, async (req, res) => {
+      const vendorId = req.user.id;
+
+      const tickets = await ticketCollection
+        .find({
+          userId: vendorId,
+        })
+        .toArray();
+
+      const totalTicketsAdded = tickets.reduce(
+        (sum, ticket) =>
+          sum + Number(ticket.ticketQuantity || 0),
+        0
+      );
+
+      const bookings = await bookingCollection
+        .find({
+          vendorId,
+          paymentStatus: "paid",
+        })
+        .toArray();
+
+      const totalTicketsSold = bookings.reduce(
+        (sum, booking) =>
+          sum + Number(booking.quantity || 0),
+        0
+      );
+
+      const totalRevenue = bookings.reduce(
+        (sum, booking) =>
+          sum + Number(booking.totalPrice || 0),
+        0
+      );
+
+      res.json({
+        totalTicketsAdded,
+        totalTicketsSold,
+        totalRevenue,
+      });
+    }
+  );
     // Admin Ticket get 
     app.get('/admin/tickets', async(req, res) => {
       const result = await ticketCollection.find({hidden: { $ne: true }}).toArray();
